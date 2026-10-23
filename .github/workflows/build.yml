@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Oldest available runners, so the binaries run on older glibc.
+          # Older runners: binaries run on older glibc, and macos-latest queues for hours.
           - name: linux-x86_64
             runner: ubuntu-22.04
           - name: linux-arm64
             runner: ubuntu-22.04-arm
           - name: macos-arm64
-            runner: macos-latest
+            runner: macos-15
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
