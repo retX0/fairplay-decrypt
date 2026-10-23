@@ -16,10 +16,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Oldest available runners, so the binaries run on older glibc.
           - name: linux-x86_64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
           - name: linux-arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
           - name: macos-arm64
             runner: macos-latest
     runs-on: ${{ matrix.runner }}
@@ -30,35 +31,33 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
       - name: Install ldid
         if: runner.os == 'macOS'
         run: brew install ldid
 
       - name: Build
-        run: make
+        run: make dist
 
       - name: Smoke test
         run: |
-          python -m pip install -r requirements.txt
-          python decrypt.py --help
-          file transform
+          ./dist/fairplay-decrypt --help
+          if [ "$RUNNER_OS" = macOS ]; then ./dist/fairplay-credential --help; fi
 
-      - name: Package
+      - name: Rename
         run: |
-          pkg="fairplay-decrypt-${{ matrix.name }}"
-          mkdir -p "dist/$pkg"
-          cp README.md requirements.txt decrypt.py core.py transform transform_const_data.bin "dist/$pkg/"
-          if [ "$RUNNER_OS" = macOS ]; then
-            mkdir -p "dist/$pkg/credential-retrieval/build"
-            cp credential-retrieval/README.md credential-retrieval/retrieve.py credential-retrieval/native_ssh.py "dist/$pkg/credential-retrieval/"
-            cp -R credential-retrieval/build/bundle "dist/$pkg/credential-retrieval/build/"
-          fi
-          tar -C dist -czf "dist/$pkg.tar.gz" "$pkg"
+          mkdir release
+          for exe in dist/*; do
+            cp "$exe" "release/$(basename "$exe")-${{ matrix.name }}"
+          done
+          ls -l release
 
       - uses: actions/upload-artifact@v5
         with:
           name: fairplay-decrypt-${{ matrix.name }}
-          path: dist/*.tar.gz
+          path: release/*
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -69,10 +68,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v6
         with:
-          path: dist
+          path: release
           merge-multiple: true
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.tar.gz
+          files: release/*
           generate_release_notes: true
