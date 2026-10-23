@@ -47,7 +47,7 @@ class SSHDevice:
         self.run("mkdir -m 755 " + shlex.quote(self.trigger_directory))
 
     def run(self, command: str, data: bytes | None = None) -> bytes:
-        result = subprocess.run(self.command + [command], input=data, capture_output=True, timeout=120)
+        result = subprocess.run(self.command + [command], input=data, capture_output=True, timeout=300)
         if result.returncode:
             message = (result.stdout + result.stderr).decode("utf-8", "replace")
             raise RuntimeError(f"device command failed ({result.returncode}): {message}")
